@@ -213,7 +213,7 @@ write.ls.to.sif<-function(prot_id,LEANres,outfile){
     i=NULL# evade R CMD check notes for undefined "global" variables
     restab<-LEANres$restab;g<-LEANres$indGraph
     gsc.idx<-LEANres$nhs;gene_list_scores<-LEANres$gene.scores
-    nh.scores<-sort(gene_list_scores[V(g)$name[gsc.idx[[prot_id]]]])
+    nh.scores<-sort(gene_list_scores[V(g)[gsc.idx[[prot_id]]]])
     k<-restab[prot_id,'k']
     sel_neighbors<-names(nh.scores)[1:k]
     left_neighbors<-setdiff(names(nh.scores),sel_neighbors)
@@ -241,7 +241,7 @@ get.ls.info<-function(prot_id,LEANres){
   i=NULL# evade R CMD check notes for undefined "global" variables
   restab<-LEANres$restab;g<-LEANres$indGraph
   gsc.idx<-LEANres$nhs;gene_list_scores<-LEANres$gene.scores
-  nh.scores<-sort(gene_list_scores[V(g)$name[gsc.idx[[prot_id]]]])
+  nh.scores<-sort(gene_list_scores[V(g)[gsc.idx[[prot_id]]]])
   k<-restab[prot_id,'k']
   info.tab<-data.frame(ID=names(nh.scores),input.ps=nh.scores,selected=1:length(nh.scores)<=k)
   if (length(nh.scores)<1){
@@ -343,12 +343,16 @@ run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.wit
 	
 	# compute same scores based on random perm of gene scores
 	if (verbose){
-		print('# Computing enrichment scores on permuted scores for each gene neighborhood...')
-		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
-		print(system.time(ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.list.scores[perm])))
+	  print('# Computing enrichment scores on permuted scores for each gene neighborhood...')
+	  perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
+	  gene.scores.permed<-gene.list.scores[perm]
+	  names(gene.scores.permed)<-names(gene.list.scores)
+	  print(system.time(ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)))
 	}else{
-		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
-		ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.list.scores[perm])
+	  perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
+	  gene.scores.permed<-gene.list.scores[perm]
+	  names(gene.scores.permed)<-names(gene.list.scores)
+	  ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)
 	}
 	
 	# create result table
@@ -444,10 +448,14 @@ run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.
 	if (verbose){
 		print('# Computing enrichment scores on permuted scores for each gene neighborhood...')
 		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
-		print(system.time(ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.list.scores[perm])))
+		gene.scores.permed<-gene.list.scores[perm]
+		names(gene.scores.permed)<-names(gene.list.scores)
+		print(system.time(ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)))
 	}else{
 		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
-		ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.list.scores[perm])
+		gene.scores.permed<-gene.list.scores[perm]
+		names(gene.scores.permed)<-names(gene.list.scores)
+		ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)
 	}
 	
 	# create randomized result table
