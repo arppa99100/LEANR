@@ -16,6 +16,8 @@ sif2graph<-function(siffile){
 	scores_scaled<- rep(1,dim(dat)[1])
 	write.table(cbind(dat[,c(1,3)],scores_scaled),sprintf('%s.ncol',siffile),sep='\t',quote=F,col.names=F,row.names=F)
 	g <- read.graph(sprintf('%s.ncol',siffile),format='ncol')
+	file.remove(sprintf('%s.ncol',siffile))
+	g
 }
 
 subnet.simulation<-function(g,nmods=10,mod_lims=c(10,50),pval_scaling=0.1,mod_enrich_perc=0.5,spec='',prob_function=function(degs){degs/sum(degs)},create.files=T){

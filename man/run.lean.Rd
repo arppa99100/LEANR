@@ -61,8 +61,8 @@ Frederik Gwinner
 ## contained in the LEANR package install directory
 \dontrun{ 
 # compute LEAN p-values starting from a network file and a p-value file
-rank_file<-system.file('input_pvals_CCM2.txt')
-net_file<-system.file('STRING_Mouse_fs900.sif')
+rank_file<-system.file('input_pvals_CCM2.txt.gz')
+net_file<-system.file('STRING_Mouse_fs900.sif.gz')
 res<-run.lean(rank_file,net_file,verbose=T)
 
 # extract significant genes
