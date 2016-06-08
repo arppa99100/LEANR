@@ -5,7 +5,7 @@ Version: 1.4.3
 Date: 2016-06-08
 Author: Frederik Gwinner
 Maintainer: Frederik Gwinner <frederik.gwinner@gmail.com>
-Description: Implements the method described in "Network-based analysis of omics data: The LEAN method"
+Description: Implements the method described in "Network-based analysis of omics data: The LEAN method".
  Given a protein interaction network and a list of p-values describing a measure of interest (as e.g. differential gene expression) this method
  computes an enrichment p-value for the protein neighborhood of each gene and compares it to a background distribution of randomly drawn p-values.
  The resulting scores are corrected for multiple testing and significant hits are returned in tabular format.
