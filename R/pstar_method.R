@@ -12,11 +12,12 @@ if (require('doMC')) {
 
 # load network from sif file
 sif2graph<-function(siffile){
+  tmpfile<-sprintf('%s/%s.ncol',tempdir(),basename(siffile))
 	dat<-read.table(siffile,sep='\t',stringsAsFactors=F)
 	scores_scaled<- rep(1,dim(dat)[1])
-	write.table(cbind(dat[,c(1,3)],scores_scaled),sprintf('%s.ncol',siffile),sep='\t',quote=F,col.names=F,row.names=F)
-	g <- read.graph(sprintf('%s.ncol',siffile),format='ncol')
-	file.remove(sprintf('%s.ncol',siffile))
+	write.table(cbind(dat[,c(1,3)],scores_scaled),tmpfile,sep='\t',quote=F,col.names=F,row.names=F)
+	g <- read.graph(tmpfile,format='ncol')
+	file.remove(tmpfile)
 	g
 }
 
