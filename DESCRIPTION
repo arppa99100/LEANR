@@ -1,8 +1,8 @@
 Package: LEANR
 Type: Package
 Title: Finds "Local Subnetworks" Within an Interaction Network which Show Enrichment for Differentially Expressed Genes
-Version: 1.4.4
-Date: 2016-06-08
+Version: 1.4.5
+Date: 2016-06-13
 Author: Frederik Gwinner
 Maintainer: Frederik Gwinner <frederik.gwinner@gmail.com>
 Description: Implements the method described in "Network-based analysis of omics data: The LEAN method".
@@ -11,8 +11,8 @@ Description: Implements the method described in "Network-based analysis of omics
  The resulting scores are corrected for multiple testing and significant hits are returned in tabular format.
 License: GPL-3
 Packaged: 2015-12-21 16:39:28 UTC; fgwinner
-Depends: R (>= 2.10), igraph(>= 0.7.1), foreach(>= 1.4.2)
-Imports: doMC(>= 1.3.3)
+Depends: R (>= 2.14), igraph(>= 0.7.1), foreach(>= 1.4.2)
+Imports: doMC(>= 1.3.3), doParallel
 Suggests: knitr,
     rmarkdown,
     ROCR,

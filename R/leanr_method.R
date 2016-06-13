@@ -1,11 +1,17 @@
 ## INCLUDES
 library(igraph)
 library(foreach)
+
 # try to load parallel backend to speed up background dist calculations
 if (require('doMC')) {
   registerDoMC()
 } else {
-  warning('Library doMC could not be found. Parallel execution disabled.')
+  warning('Could not find package doMC. Trying package doParallel as an alternative...')
+  if (require('doParallel')){
+    registerDoParallel()
+  } else {
+    warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
+  }
 }
 
 ## FUNCTIONS

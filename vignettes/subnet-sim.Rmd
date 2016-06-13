@@ -13,11 +13,17 @@ vignette: >
 Loading necessary packages and data
 ```{r, eval=FALSE}
 library(LEANR)
-library(doMC)
-# by default doMC uses only half of the available cores
-# to use more cores, add the number of cores as argument to 
-# the following line, i.e. registerDoMC(3)
-registerDoMC()
+# try to load parallel backend to speed up background dist calculations
+if (require('doMC')) {
+  registerDoMC()
+} else {
+  warning('Could not find package doMC. Trying package doParallel as an alternative...')
+  if (require('doParallel')){
+    registerDoParallel()
+  } else {
+    warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
+  }
+}
 library(ROCR)
 set.seed(123456)
 data(g2)
