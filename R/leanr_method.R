@@ -9,12 +9,12 @@
 # if neither works parallel execution is disabled with a warning
 register.backend<-function(cores=NULL){
   using.parallel<-FALSE
-  if (require('doMC')) {
-    if (is.null(cores)) registerDoMC()else registerDoMC(cores=cores)
+  if (requireNamespace("doMC", quietly = TRUE)) {
+    if (is.null(cores)) doMC::registerDoMC()else doMC::registerDoMC(cores=cores)
   } else {
-    if (require('doParallel')){
+    if (requireNamespace("doParallel", quietly = TRUE)){
       using.parallel<-TRUE
-      if (is.null(cores)) registerDoParallel()else registerDoParallel(cores=cores)
+      if (is.null(cores)) doParallel::registerDoParallel()else doParallel::registerDoParallel(cores=cores)
     } else {
       warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
     }
@@ -24,7 +24,7 @@ register.backend<-function(cores=NULL){
 
 # stop parallel backend if it has been started using the parallel package
 stop.backend<-function(using.parallel){
-  if (using.parallel) stopImplicitCluster()
+  if (using.parallel) doParallel::stopImplicitCluster()
 }
 
 # load network from sif file
