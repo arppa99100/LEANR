@@ -3,6 +3,12 @@ export('run.lean.fromdata')
 export('write.ls.to.sif')
 export('get.ls.info')
 export('subnet.simulation')
-import(igraph, foreach, doMC)
+import(igraph, foreach)
+if ("doMC" %in% rownames(utils::installed.packages())){
+  importFrom("doMC","registerDoMC")
+}
+if ("doParallel" %in% rownames(utils::installed.packages())){
+  importFrom("doParallel","registerDoParallel","stopImplicitCluster")
+}
 importFrom("stats", "p.adjust", "pbinom", "runif", "sd")
 importFrom("utils", "read.table", "write.table")
