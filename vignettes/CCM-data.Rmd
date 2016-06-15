@@ -14,11 +14,13 @@ Loading package and necessary data
 ```{r, eval=FALSE}
 library(LEANR)
 # try to load parallel backend to speed up background dist calculations
+using.parallel<-FALSE
 if (require('doMC')) {
   registerDoMC()
 } else {
   warning('Could not find package doMC. Trying package doParallel as an alternative...')
   if (require('doParallel')){
+    using.parallel<-TRUE
     registerDoParallel()
   } else {
     warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
@@ -75,6 +77,9 @@ write.table(vwf.ls.info,'./VWF_subnetwork_info_CCM2.txt',sep='\t',quote=F,row.na
 
 # Create sif file representing the local subnetwork around VWF
 write.ls.to.sif(all.sign[1],LEAN_results$CCM2,'./VWF_subnetwork.sif')
+
+# close implicit cluster if needed
+if (using.parallel) closeImplicitCluster()
 ```
 
 After completing these steps, the local subnetwork around VWF can be inspected in Cytoscape by loading the network from file <VWF_subnetwork.sif> and adding information about the contained genes by loading the table from file <VWF_subnetwork_info.txt>

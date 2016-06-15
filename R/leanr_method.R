@@ -3,12 +3,13 @@ library(igraph)
 library(foreach)
 
 # try to load parallel backend to speed up background dist calculations
+using.parallel<-FALSE
 if (require('doMC')) {
   registerDoMC()
 } else {
   warning('Could not find package doMC. Trying package doParallel as an alternative...')
   if (require('doParallel')){
-    registerDoParallel()
+    using.parallel<-TRUE
   } else {
     warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
   }
@@ -263,6 +264,9 @@ get.ls.info<-function(prot_id,LEANres){
 # MAIN function
 run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F){
     mi=n=NULL # evade R CMD check notes for undefined "global" variables
+    if (using.parallel){
+      registerDoParallel()
+    }
 	if (verbose){
 		print('## Parsing network file...')
 		print(system.time(g <- sif2graph(net_file)))
@@ -378,13 +382,17 @@ run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.wit
 	dimnames(comps_tab.rand)<-list(names(gsc.idx),c('Ptilde','mean_bg_p','k','m','pk','pstar','z.score'))	
 	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
 	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
-	
+	if (using.parallel){
+	  stopImplicitCluster()
+	}
 	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
 }
 
 run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F){
   mi=n=NULL # evade R CMD check notes for undefined "global" variables
-  
+  if (using.parallel){
+    registerDoParallel()
+  }
   # reduce graph and gene scores to genes contained in both
   g2<-reduce.graph.fromdata(g,gene.list.scores,add.scored.genes,keep.nodes.without.scores,verbose)
   
@@ -482,5 +490,8 @@ run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.
 	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
 	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
 	
+	if (using.parallel){
+	  stopImplicitCluster()
+	}
 	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
 }
