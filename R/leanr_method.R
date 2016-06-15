@@ -1,21 +1,31 @@
 ## INCLUDES
-library(igraph)
-library(foreach)
-
-# try to load parallel backend to speed up background dist calculations
-using.parallel<-FALSE
-if (require('doMC')) {
-  registerDoMC()
-} else {
-  warning('Could not find package doMC. Trying package doParallel as an alternative...')
-  if (require('doParallel')){
-    using.parallel<-TRUE
-  } else {
-    warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
-  }
-}
+#library(igraph)
+#library(foreach)
 
 ## FUNCTIONS
+# register the parallel backend: 
+# First tries using library doMC (available on linux/MacOS)
+# If unsuccessful tries to use doParallel library (also available on windows)
+# if neither works parallel execution is disabled with a warning
+register.backend<-function(cores=NULL){
+  using.parallel<-FALSE
+  if (require('doMC')) {
+    if (is.null(cores)) registerDoMC()else registerDoMC(cores=cores)
+  } else {
+    if (require('doParallel')){
+      using.parallel<-TRUE
+      if (is.null(cores)) registerDoParallel()else registerDoParallel(cores=cores)
+    } else {
+      warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
+    }
+  }
+  using.parallel
+}
+
+# stop parallel backend if it has been started using the parallel package
+stop.backend<-function(using.parallel){
+  if (using.parallel) stopImplicitCluster()
+}
 
 # load network from sif file
 sif2graph<-function(siffile){
@@ -262,11 +272,10 @@ get.ls.info<-function(prot_id,LEANres){
 }
 
 # MAIN function
-run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F){
+run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F,ncores=NULL){
     mi=n=NULL # evade R CMD check notes for undefined "global" variables
-    if (using.parallel){
-      registerDoParallel()
-    }
+  # try to initialize parallel backend
+  using.parallel<-register.backend(cores=ncores)
 	if (verbose){
 		print('## Parsing network file...')
 		print(system.time(g <- sif2graph(net_file)))
@@ -382,17 +391,18 @@ run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.wit
 	dimnames(comps_tab.rand)<-list(names(gsc.idx),c('Ptilde','mean_bg_p','k','m','pk','pstar','z.score'))	
 	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
 	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
-	if (using.parallel){
-	  stopImplicitCluster()
-	}
+	
+	#shut down parallel backend if needed
+	stop.backend(using.parallel)
+	
 	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
 }
 
-run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F){
+run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F,ncores=NULL){
   mi=n=NULL # evade R CMD check notes for undefined "global" variables
-  if (using.parallel){
-    registerDoParallel()
-  }
+  
+  # try to initialize parallel backend
+  using.parallel<-register.backend(cores=ncores)
   # reduce graph and gene scores to genes contained in both
   g2<-reduce.graph.fromdata(g,gene.list.scores,add.scored.genes,keep.nodes.without.scores,verbose)
   
@@ -490,8 +500,8 @@ run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.
 	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
 	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
 	
-	if (using.parallel){
-	  stopImplicitCluster()
-	}
+	#shut down parallel backend if needed
+	stop.backend(using.parallel)
+	
 	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
 }

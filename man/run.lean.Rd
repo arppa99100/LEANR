@@ -10,7 +10,7 @@
 \usage{
 run.lean(rank_file, net_file, ranked = F, 
     add.scored.genes = F, keep.nodes.without.scores = F, 
-    verbose = F, n_reps = 10000, bootstrap = F)
+    verbose = F, n_reps = 10000, bootstrap = F, ncores = NULL)
 }
 \arguments{
   \item{rank_file}{
@@ -36,6 +36,9 @@ run.lean(rank_file, net_file, ranked = F,
 }
   \item{bootstrap}{
   whether to draw the pvalues of the background distributions with or without replacement
+}
+  \item{ncores}{
+  number of cores to be used in parallel computation. Default (NULL) leads to automatic guessing of max number of cores to be used (depending on operating system).
 }
 }
 \value{
