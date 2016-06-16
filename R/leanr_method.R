@@ -156,10 +156,11 @@ get.nhs<-function(g,gene.scores){
     nidx=NULL # evade R CMD check notes for undefined "global" variables
 	node_idcs<-V(g)
 	gsc.idx<-list();
-	gsc.idx<-foreach (nidx=1:length(node_idcs)) %dopar% {
-		tmp<-unique(c(node_idcs[nidx],neighbors(g, node_idcs[nidx], mode = 'all')))
-		intersect(V(g)[tmp]$name,names(gene.scores))
-	};
+	gsc.idx<-foreach (nidx=1:length(node_idcs),.packages = c('igraph')) %dopar% {
+	  vc<-node_idcs[as.numeric(nidx)]
+	  tmp<-unique(c(vc,igraph::neighbors(graph=g, v=V(g)[vc],mode='all')));
+	  intersect(igraph::V(g)[tmp]$name,names(gene.scores))
+	}
 	names(gsc.idx)<-V(g)$name;
 	gsc.idx<-gsc.idx[sapply(gsc.idx,length)>0]
 	gsc.idx
@@ -428,11 +429,11 @@ run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.
 	if (verbose){
 		print(sprintf('## Computing random p~ background dists with n=%i...',n_reps))
 		print(sprintf('Number of different observed gene set sizes: %i',length(all_ms)))
-		print(system.time(bgs<-foreach (mi=1:length(all_ms),.combine=rbind) %dopar% {
+		print(system.time(bgs<-foreach (mi=1:length(all_ms),.combine=rbind,.packages = c("LEANR","igraph")) %dopar% {
 			sapply(1:n_reps,function(i){ptilde.score(gene.list.scores, sample(1:N,all_ms[mi],replace=bootstrap))})
 		}))
 	}else{
-		bgs<-foreach (mi=1:length(all_ms),.combine=rbind) %dopar% {
+		bgs<-foreach (mi=1:length(all_ms),.combine=rbind,.packages = c("LEANR","igraph")) %dopar% {
 			sapply(1:n_reps,function(i){ptilde.score(gene.list.scores, sample(1:N,all_ms[mi],replace=bootstrap))})}
 	}
 	rownames(bgs)<-as.character(all_ms)
