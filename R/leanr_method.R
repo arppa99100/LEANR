@@ -221,7 +221,7 @@ write.ls.to.sif<-function(prot_id,LEANres,outfile){
     i=NULL# evade R CMD check notes for undefined "global" variables
     restab<-LEANres$restab;g<-LEANres$indGraph
     gsc.idx<-LEANres$nhs;gene_list_scores<-LEANres$gene.scores
-    nh.scores<-sort(gene_list_scores[V(g)[gsc.idx[[prot_id]]]])
+    nh.scores<-sort(gene_list_scores[as.character(gsc.idx[[prot_id]])])
     k<-restab[prot_id,'k']
     sel_neighbors<-names(nh.scores)[1:k]
     left_neighbors<-setdiff(names(nh.scores),sel_neighbors)
@@ -249,7 +249,7 @@ get.ls.info<-function(prot_id,LEANres){
   i=NULL# evade R CMD check notes for undefined "global" variables
   restab<-LEANres$restab;g<-LEANres$indGraph
   gsc.idx<-LEANres$nhs;gene_list_scores<-LEANres$gene.scores
-  nh.scores<-sort(gene_list_scores[V(g)[gsc.idx[[prot_id]]]])
+  nh.scores<-sort(gene_list_scores[as.character(gsc.idx[[prot_id]])])
   k<-restab[prot_id,'k']
   info.tab<-data.frame(ID=names(nh.scores),input.ps=nh.scores,selected=1:length(nh.scores)<=k)
   if (length(nh.scores)<1){
