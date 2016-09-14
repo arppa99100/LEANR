@@ -25,5 +25,4 @@ Frederik Gwinner
 
 \seealso{
  \code{\link[LEANR:run.lean]{run.lean}}
- \code{\link[LEANR:run.lean.fromdata]{run.lean.fromdata}}
 }

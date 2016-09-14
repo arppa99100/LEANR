@@ -34,7 +34,7 @@ Run LEAN on the precomputed differential expression p-values (computed using lim
 
 ```{r, eval=FALSE}
 LEAN_results<-lapply(names(CCM.pvals),function(ccm){
-  run.lean.fromdata(CCM.pvals[[ccm]], g2, n_reps = 10000, ncores = 3)
+  run.lean(CCM.pvals[[ccm]], g2, n_reps = 10000, ncores = 3)
 })
 names(LEAN_results)<-names(CCM.pvals)
 ```

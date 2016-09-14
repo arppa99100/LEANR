@@ -5,7 +5,7 @@ data(g_red)
 data(pvals_red)
 test.scores<-pvals_red
 sif_out<-'./test.sif'
-res1<-run.lean.fromdata(g=g_red,gene.list.scores=test.scores,n_reps=10^2,ncores=2)
+res1<-run.lean(ranking=test.scores,network=g_red,n_reps=10^2,ncores=2)
 sig_genes<-rownames(res1$restab[res1$restab[,'pstar']<0.1,])
 sig_genes_rand<-rownames(res1$randtab[res1$randtab[,'pstar']<0.1,])
 sample_gene<-sample(sig_genes,1)

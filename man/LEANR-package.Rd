@@ -36,7 +36,6 @@ Gwinner et al., Network-based analysis of omics data: The LEAN method, MS submit
 \keyword{ package }
 \seealso{
  \code{\link[LEANR:run.lean]{run.lean}}
- \code{\link[LEANR:run.lean.fromdata]{run.lean.fromdata}}
  vignette("CCM-data")
  vignette("subnet-sim")
 }

@@ -4,27 +4,14 @@
 
 ## FUNCTIONS
 # register the parallel backend: 
-# First tries using library doMC (available on linux/MacOS)
-# If unsuccessful tries to use doParallel library (also available on windows)
-# if neither works parallel execution is disabled with a warning
+# Tries using library doMC (available on linux/MacOS)
+# if this does not work parallel execution is disabled with a warning
 register.backend<-function(cores=NULL){
-  using.parallel<-FALSE
   if (requireNamespace("doMC", quietly = TRUE)) {
     if (is.null(cores)) doMC::registerDoMC()else doMC::registerDoMC(cores=cores)
   } else {
-    if (requireNamespace("doParallel", quietly = TRUE)){
-      using.parallel<-TRUE
-      if (is.null(cores)) doParallel::registerDoParallel()else doParallel::registerDoParallel(cores=cores)
-    } else {
-      warning('Neither library doMC nor doParallel could be found. Parallel execution disabled.')
-    }
+      warning('Library doMC could not be found. Parallel execution disabled.')
   }
-  using.parallel
-}
-
-# stop parallel backend if it has been started using the parallel package
-stop.backend<-function(using.parallel){
-  if (using.parallel) doParallel::stopImplicitCluster()
 }
 
 # load network from sif file
@@ -273,32 +260,44 @@ get.ls.info<-function(prot_id,LEANres){
 }
 
 # MAIN function
-run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F,ncores=NULL){
+run.lean<-function(ranking,network,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F,ncores=NULL){
     mi=n=NULL # evade R CMD check notes for undefined "global" variables
   # try to initialize parallel backend
-  using.parallel<-register.backend(cores=ncores)
-	if (verbose){
-		print('## Parsing network file...')
-		print(system.time(g <- sif2graph(net_file)))
-	}else{
-		g <- sif2graph(net_file)
-	}
+  register.backend(cores=ncores)
+  if (is.character(network)){
+	  if (verbose){
+		  print('## Parsing network file...')
+		  print(system.time(g <- sif2graph(network)))
+	  }else{
+		  g <- sif2graph(network)
+	  }
+  }else{
+    if (is.igraph(network)) g<-network
+    else{
+      stop('Provided network is neither a valid file name nor an igraph object. Exiting')
+    }
+  }
 	
 	# adapt graph to nodes appearing in gene ranking
 	if (verbose){
 		print('## Adapting graph to scoring genes...')
-		print(system.time(g2<-reduce.graph(g,rank_file,add.scored.genes,keep.nodes.without.scores,verbose)))
+	  if (is.character(ranking)){
+		  print(system.time(g2<-reduce.graph(g,ranking,add.scored.genes,keep.nodes.without.scores,verbose)))
+	    gene.list.scores<-get.gene.scoring(g2,ranking)
+	  }else{
+	    print(system.time(g2<-reduce.graph.fromdata(g,ranking,add.scored.genes,keep.nodes.without.scores,verbose)))  
+	    gene.list.scores<-ranking
+	  }
 	} else{
-		g2<-reduce.graph(g,rank_file,add.scored.genes,keep.nodes.without.scores)	
+	  if (is.character(ranking)){
+	    g2<-reduce.graph(g,ranking,add.scored.genes,keep.nodes.without.scores,verbose)
+	    gene.list.scores<-get.gene.scoring(g2,ranking)
+	  }else{
+	    g2<-reduce.graph.fromdata(g,ranking,add.scored.genes,keep.nodes.without.scores)
+	    gene.list.scores<-ranking
+	  }
 	}
 	
-	# get gene scores
-	if (verbose){
-		print('## Getting gene ranking according to limma analysis...')
-		print(system.time(gene.list.scores<-get.gene.scoring(g2,rank_file)))
-	}else{
-		gene.list.scores<-get.gene.scoring(g2,rank_file)
-	}
 	# transform scores into uniform pval dists if <ranked>==T
 	if (ranked){
 		N<-length(gene.list.scores)
@@ -393,116 +392,108 @@ run.lean<-function(rank_file,net_file,ranked=F,add.scored.genes=F,keep.nodes.wit
 	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
 	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
 	
-	#shut down parallel backend if needed
-	stop.backend(using.parallel)
-	
 	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
 }
 
-run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F,ncores=NULL){
-  mi=n=NULL # evade R CMD check notes for undefined "global" variables
-  
-  # try to initialize parallel backend
-  using.parallel<-register.backend(cores=ncores)
-  # reduce graph and gene scores to genes contained in both
-  g2<-reduce.graph.fromdata(g,gene.list.scores,add.scored.genes,keep.nodes.without.scores,verbose)
-  
-	# transform scores into uniform pval dists if <ranked>==T
-	if (ranked){
-		N<-length(gene.list.scores)
-		gene.list.ranks<-rank(gene.list.scores,ties.method='random')
-		gene.list.scores2<-sapply(gene.list.ranks,function(r){r/N})
-		gene.list.scores<-gene.list.scores2-(min(gene.list.scores2)/2)
-	}
-	
-	# define neighborhoods as gene sets
-	if (verbose){
-		print('## Defining neighborhoods as gene sets...')
-		print(system.time(gsc.idx<-get.nhs(g2,gene.list.scores)))
-		print(sprintf('Found %i neighborhoods with at least one measured input score',length(gsc.idx)))
-	}else{
-		gsc.idx<-get.nhs(g2,gene.list.scores)
-	}
-	g2m<-sapply(names(gsc.idx),function(x)length(gsc.idx[[x]]))
-	all_ms<-sort(unique(as.numeric(g2m)),decreasing = TRUE)
-	N<-length(gene.list.scores)
-	if (verbose){
-		print(sprintf('## Computing random p~ background dists with n=%i...',n_reps))
-		print(sprintf('Number of different observed gene set sizes: %i',length(all_ms)))
-		print(system.time(bgs<-foreach (mi=1:length(all_ms),.combine=rbind,.packages = c("LEANR","igraph")) %dopar% {
-			sapply(1:n_reps,function(i){ptilde.score(gene.list.scores, sample(1:N,all_ms[mi],replace=bootstrap))})
-		}))
-	}else{
-		bgs<-foreach (mi=1:length(all_ms),.combine=rbind,.packages = c("LEANR","igraph")) %dopar% {
-			sapply(1:n_reps,function(i){ptilde.score(gene.list.scores, sample(1:N,all_ms[mi],replace=bootstrap))})}
-	}
-	rownames(bgs)<-as.character(all_ms)
-	colnames(bgs)<-c()
-	
-	# calculate mean/sd of bg dists to be used in the calculation of z-scores later
-	zpars<-list()
-	zscore<-function(xs,pars){(xs-pars$mu)/pars$sigma}
-	for (m in all_ms){
-		mchar<-as.character(m)
-		mu<-mean(bgs[mchar,])
-		sigma<-sd(bgs[mchar,])
-		zpars[[mchar]]<-list(mu=mu,sigma=sigma)
-	}
-	
-	# compute enrichment for each gene neighborhood
-	if (verbose){
-		print('# Computing enrichment scores for each gene neighborhood...')
-		print(system.time(ptilde.ext<-compute.ptilde.ext(gsc.idx,gene.list.scores)))
-	}else{
-		ptilde.ext<-compute.ptilde.ext(gsc.idx,gene.list.scores)
-	}
-	
-	# create results table
-	if (verbose){print('Compiling result table...')}
-	tac<-system.time(comps_tab<-foreach(n=1:dim(ptilde.ext)[1],.combine=rbind) %do% {
-		mchar<-as.character(g2m[n])
-		true_ps<-ptilde.ext[n,'Ptilde']
-		bg_es <- as.numeric(bgs[mchar,])
-		mean_bg <- mean(bg_es,na.rm=T)
-		z<-zscore(true_ps,zpars[[mchar]])
-		c(true_ps,mean_bg,ptilde.ext[n,'k'],g2m[n],ptilde.ext[n,'pk'],sum(bg_es<=true_ps)/n_reps,z)
-	})
-	if (verbose){print(tac)}
-	dimnames(comps_tab)<-list(names(gsc.idx),c('Ptilde','mean_bg_p','k','m','pk','pstar','z.score'))	
-	comps_tab<-cbind(comps_tab,p.adjust(((comps_tab[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
-	colnames(comps_tab)[dim(comps_tab)[2]]<-'PLEAN'
-	
-	# compute same scores based on random perm of gene scores
-	if (verbose){
-		print('# Computing enrichment scores on permuted scores for each gene neighborhood...')
-		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
-		gene.scores.permed<-gene.list.scores[perm]
-		names(gene.scores.permed)<-names(gene.list.scores)
-		print(system.time(ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)))
-	}else{
-		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
-		gene.scores.permed<-gene.list.scores[perm]
-		names(gene.scores.permed)<-names(gene.list.scores)
-		ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)
-	}
-	
-	# create randomized result table
-	if (verbose){print('Compiling result table...')}
-	tac<-system.time(comps_tab.rand<-foreach(n=1:dim(ptilde.ext.rand)[1],.combine=rbind) %do% {
-		mchar<-as.character(g2m[n])
-		true_ps<-ptilde.ext.rand[n,'Ptilde']
-		bg_es <- as.numeric(bgs[mchar,])
-		mean_bg <- mean(bg_es,na.rm=T)
-		z<-zscore(true_ps,zpars[[mchar]])
-		c(true_ps,mean_bg,ptilde.ext.rand[n,'k'],g2m[n],ptilde.ext.rand[n,'pk'],sum(bg_es<=true_ps)/n_reps,z)	
-	})
-	if (verbose){print(tac)}
-	dimnames(comps_tab.rand)<-list(names(gsc.idx),c('Ptilde','mean_bg_p','k','m','pk','pstar','z.score'))	
-	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
-	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
-	
-	#shut down parallel backend if needed
-	stop.backend(using.parallel)
-	
-	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
-}
+# run.lean.fromdata<-function(gene.list.scores,g,ranked=F,add.scored.genes=F,keep.nodes.without.scores=F,verbose=F,n_reps=10000,bootstrap=F,ncores=NULL){
+#   mi=n=NULL # evade R CMD check notes for undefined "global" variables
+#   
+#   # try to initialize parallel backend
+#   register.backend(cores=ncores)
+#   
+# 	# transform scores into uniform pval dists if <ranked>==T
+# 	if (ranked){
+# 		N<-length(gene.list.scores)
+# 		gene.list.ranks<-rank(gene.list.scores,ties.method='random')
+# 		gene.list.scores2<-sapply(gene.list.ranks,function(r){r/N})
+# 		gene.list.scores<-gene.list.scores2-(min(gene.list.scores2)/2)
+# 	}
+# 	
+# 	# define neighborhoods as gene sets
+# 	if (verbose){
+# 		print('## Defining neighborhoods as gene sets...')
+# 		print(system.time(gsc.idx<-get.nhs(g2,gene.list.scores)))
+# 		print(sprintf('Found %i neighborhoods with at least one measured input score',length(gsc.idx)))
+# 	}else{
+# 		gsc.idx<-get.nhs(g2,gene.list.scores)
+# 	}
+# 	g2m<-sapply(names(gsc.idx),function(x)length(gsc.idx[[x]]))
+# 	all_ms<-sort(unique(as.numeric(g2m)),decreasing = TRUE)
+# 	N<-length(gene.list.scores)
+# 	if (verbose){
+# 		print(sprintf('## Computing random p~ background dists with n=%i...',n_reps))
+# 		print(sprintf('Number of different observed gene set sizes: %i',length(all_ms)))
+# 		print(system.time(bgs<-foreach (mi=1:length(all_ms),.combine=rbind,.packages = c("LEANR","igraph")) %dopar% {
+# 			sapply(1:n_reps,function(i){ptilde.score(gene.list.scores, sample(1:N,all_ms[mi],replace=bootstrap))})
+# 		}))
+# 	}else{
+# 		bgs<-foreach (mi=1:length(all_ms),.combine=rbind,.packages = c("LEANR","igraph")) %dopar% {
+# 			sapply(1:n_reps,function(i){ptilde.score(gene.list.scores, sample(1:N,all_ms[mi],replace=bootstrap))})}
+# 	}
+# 	rownames(bgs)<-as.character(all_ms)
+# 	colnames(bgs)<-c()
+# 	
+# 	# calculate mean/sd of bg dists to be used in the calculation of z-scores later
+# 	zpars<-list()
+# 	zscore<-function(xs,pars){(xs-pars$mu)/pars$sigma}
+# 	for (m in all_ms){
+# 		mchar<-as.character(m)
+# 		mu<-mean(bgs[mchar,])
+# 		sigma<-sd(bgs[mchar,])
+# 		zpars[[mchar]]<-list(mu=mu,sigma=sigma)
+# 	}
+# 	
+# 	# compute enrichment for each gene neighborhood
+# 	if (verbose){
+# 		print('# Computing enrichment scores for each gene neighborhood...')
+# 		print(system.time(ptilde.ext<-compute.ptilde.ext(gsc.idx,gene.list.scores)))
+# 	}else{
+# 		ptilde.ext<-compute.ptilde.ext(gsc.idx,gene.list.scores)
+# 	}
+# 	
+# 	# create results table
+# 	if (verbose){print('Compiling result table...')}
+# 	tac<-system.time(comps_tab<-foreach(n=1:dim(ptilde.ext)[1],.combine=rbind) %do% {
+# 		mchar<-as.character(g2m[n])
+# 		true_ps<-ptilde.ext[n,'Ptilde']
+# 		bg_es <- as.numeric(bgs[mchar,])
+# 		mean_bg <- mean(bg_es,na.rm=T)
+# 		z<-zscore(true_ps,zpars[[mchar]])
+# 		c(true_ps,mean_bg,ptilde.ext[n,'k'],g2m[n],ptilde.ext[n,'pk'],sum(bg_es<=true_ps)/n_reps,z)
+# 	})
+# 	if (verbose){print(tac)}
+# 	dimnames(comps_tab)<-list(names(gsc.idx),c('Ptilde','mean_bg_p','k','m','pk','pstar','z.score'))	
+# 	comps_tab<-cbind(comps_tab,p.adjust(((comps_tab[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
+# 	colnames(comps_tab)[dim(comps_tab)[2]]<-'PLEAN'
+# 	
+# 	# compute same scores based on random perm of gene scores
+# 	if (verbose){
+# 		print('# Computing enrichment scores on permuted scores for each gene neighborhood...')
+# 		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
+# 		gene.scores.permed<-gene.list.scores[perm]
+# 		names(gene.scores.permed)<-names(gene.list.scores)
+# 		print(system.time(ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)))
+# 	}else{
+# 		perm<-sample(1:length(gene.list.scores),length(gene.list.scores),replace=F)
+# 		gene.scores.permed<-gene.list.scores[perm]
+# 		names(gene.scores.permed)<-names(gene.list.scores)
+# 		ptilde.ext.rand<-compute.ptilde.ext(gsc.idx,gene.scores.permed)
+# 	}
+# 	
+# 	# create randomized result table
+# 	if (verbose){print('Compiling result table...')}
+# 	tac<-system.time(comps_tab.rand<-foreach(n=1:dim(ptilde.ext.rand)[1],.combine=rbind) %do% {
+# 		mchar<-as.character(g2m[n])
+# 		true_ps<-ptilde.ext.rand[n,'Ptilde']
+# 		bg_es <- as.numeric(bgs[mchar,])
+# 		mean_bg <- mean(bg_es,na.rm=T)
+# 		z<-zscore(true_ps,zpars[[mchar]])
+# 		c(true_ps,mean_bg,ptilde.ext.rand[n,'k'],g2m[n],ptilde.ext.rand[n,'pk'],sum(bg_es<=true_ps)/n_reps,z)	
+# 	})
+# 	if (verbose){print(tac)}
+# 	dimnames(comps_tab.rand)<-list(names(gsc.idx),c('Ptilde','mean_bg_p','k','m','pk','pstar','z.score'))	
+# 	comps_tab.rand<-cbind(comps_tab.rand,p.adjust(((comps_tab.rand[,'pstar']*n_reps)+1)/(n_reps+1),'BH'))
+# 	colnames(comps_tab.rand)[dim(comps_tab.rand)[2]]<-'PLEAN'
+# 	
+# 	list(restab=comps_tab,randtab=comps_tab.rand,indGraph=g2,nhs=gsc.idx,gene.scores=gene.list.scores)
+# }
