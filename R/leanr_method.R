@@ -1,8 +1,5 @@
-## INCLUDES
-#library(igraph)
-#library(foreach)
-
 ## FUNCTIONS
+
 # register the parallel backend: 
 # Tries using library doMC (available on linux/MacOS)
 # if this does not work parallel execution is disabled with a warning

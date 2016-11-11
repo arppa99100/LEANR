@@ -17,8 +17,8 @@ of randomly drawn p-values. The resulting scores are corrected for multiple test
 \tabular{ll}{
 Package: \tab LEANR\cr
 Type: \tab Package\cr
-Version: \tab 1.3\cr
-Date: \tab 2016-05-01\cr
+Version: \tab 1.4.8\cr
+Date: \tab 2016-11-11\cr
 License: \tab GPL-3\cr
 }
  See help page of run.lean for a more detailed description of how to use this package. 
@@ -31,7 +31,7 @@ Frederik Gwinner
 Maintainer: Frederik Gwinner <frederik.gwinner@gmail.com>
 }
 \references{
-Gwinner et al., Network-based analysis of omics data: The LEAN method, MS submitted to Bioinformatics
+Gwinner et al., Network-based analysis of omics data: The LEAN method, Bioinformatics 2016
 }
 \keyword{ package }
 \seealso{
