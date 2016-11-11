@@ -1,5 +1,5 @@
 # LEANR
-Implements the method described in [Gwinner et al., Network-based analysis of omics data: The LEAN method, MS under review by Bioinformatics].
+Implements the method described in [Gwinner et al., Network-based analysis of omics data: The LEAN method, Bioinformatics 2016].
 Given a protein interaction network and a list of p-values describing a measure of interest 
 (as e.g. differential gene expression) this method  computes an enrichment p-value for the 
 protein neighborhood of each gene and compares it to a background distribution of randomly drawn p-values.
